@@ -105,6 +105,11 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
         setFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, status: 'error', error: err.message } : f
         ))
+        toast({
+          title: 'Gagal Upload',
+          description: `File "${fileTitle}": ${err.message}`,
+          variant: 'destructive',
+        })
       }
     }
 
