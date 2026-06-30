@@ -9,16 +9,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   const { searchParams } = new URL(request.url)
   const folderId = searchParams.get('folder_id')
   const isDeleted = searchParams.get('is_deleted') === 'true'
@@ -56,14 +46,25 @@ export async function DELETE(request: Request) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const isAdmin = profile?.role === 'admin'
 
   const { ids } = await request.json()
 
   if (!ids || !Array.isArray(ids)) {
     return NextResponse.json({ error: 'ids required' }, { status: 400 })
+  }
+
+  // Jika bukan admin, pastikan user hanya hapus foto miliknya sendiri
+  if (!isAdmin) {
+    const { data: photos } = await supabase
+      .from('photos')
+      .select('id, uploaded_by')
+      .in('id', ids)
+
+    const unauthorized = photos?.some(p => p.uploaded_by !== user.id)
+    if (unauthorized) {
+      return NextResponse.json({ error: 'Tidak bisa menghapus foto milik orang lain' }, { status: 403 })
+    }
   }
 
   const { error } = await supabase

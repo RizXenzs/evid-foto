@@ -10,9 +10,10 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
 
   // Fetch stats
-  const [photosResult, foldersResult, usersResult, logsResult] = await Promise.all([
+  const [photosResult, foldersCountResult, foldersListResult, usersResult, logsResult] = await Promise.all([
     supabase.from('photos').select('id, file_size, upload_date, created_at').eq('is_deleted', false),
     supabase.from('folders').select('id').eq('is_deleted', false),
+    supabase.from('folders').select('*').eq('is_deleted', false).order('name'),
     supabase.from('profiles').select('id').eq('is_active', true),
     supabase.from('activity_logs').select('*, user:profiles(full_name, email, avatar_url)').order('created_at', { ascending: false }).limit(10),
   ])
@@ -34,7 +35,7 @@ export default async function DashboardPage() {
 
   const stats = {
     total_photos: photos.length,
-    total_folders: foldersResult.data?.length || 0,
+    total_folders: foldersCountResult.data?.length || 0,
     total_users: usersResult.data?.length || 0,
     total_storage_bytes: totalStorage,
     uploads_per_month: monthlyData,
@@ -43,6 +44,7 @@ export default async function DashboardPage() {
   return (
     <DashboardClient
       profile={profile}
+      folders={foldersListResult.data || []}
       stats={stats}
       recentActivity={logsResult.data || []}
     />

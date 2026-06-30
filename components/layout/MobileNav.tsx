@@ -202,8 +202,8 @@ export function MobileNav({ profile }: MobileNavProps) {
           </div>
         )}
 
-        {/* Upload button for admin */}
-        {profile?.role === 'admin' && (
+        {/* Upload button - semua user bisa upload foto evident/laporan */}
+        {profile && (
           <div className="px-4 mt-3">
             <button
               onClick={() => { setUploadModalOpen(true); setDrawerOpen(false) }}
@@ -211,7 +211,7 @@ export function MobileNav({ profile }: MobileNavProps) {
               style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)' }}
             >
               <Upload className="w-4 h-4" />
-              Upload Foto
+              Upload Foto Laporan
             </button>
           </div>
         )}

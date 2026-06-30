@@ -33,6 +33,12 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
   const { toast } = useToast()
 
   const isAdmin = userRole === 'admin'
+  // User bisa hapus foto miliknya sendiri, admin bisa hapus semua
+  const canDelete = (photo: Photo) => isAdmin || photo.uploaded_by === userId
+  const canDeleteSelected = isAdmin || selectedPhotos.every(id => {
+    const photo = photos.find(p => p.id === id)
+    return photo?.uploaded_by === userId
+  })
 
   const fetchPhotos = useCallback(async () => {
     let query = supabase
@@ -125,10 +131,16 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
     setDeleteConfirm([photoId])
   }
 
-  // Delete all selected photos
+  // Delete all selected photos (hanya yang boleh dihapus)
   function handleDeleteSelected() {
-    if (selectedPhotos.length === 0) return
-    setDeleteConfirm([...selectedPhotos])
+    const deletableIds = isAdmin
+      ? selectedPhotos
+      : selectedPhotos.filter(id => {
+          const photo = photos.find(p => p.id === id)
+          return photo?.uploaded_by === userId
+        })
+    if (deletableIds.length === 0) return
+    setDeleteConfirm(deletableIds)
   }
 
   async function confirmDelete() {
@@ -170,8 +182,8 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
           <p className="text-muted-foreground text-sm">{photos.length} foto ditemukan</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Delete selected (admin only) */}
-          {isAdmin && selectedPhotos.length > 0 && (
+          {/* Delete selected (admin bisa hapus semua, user hapus miliknya) */}
+          {selectedPhotos.length > 0 && canDeleteSelected && (
             <button
               onClick={handleDeleteSelected}
               className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-sm font-medium text-white
@@ -262,7 +274,7 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-2">Belum Ada Foto</h3>
           <p className="text-muted-foreground text-sm">
-            {isAdmin ? 'Upload foto pertama Anda menggunakan tombol Upload.' : 'Belum ada foto yang diupload.'}
+            Upload foto evident laporan kerja Anda menggunakan tombol Upload.
           </p>
         </div>
       ) : viewMode === 'grid' ? (
@@ -293,7 +305,7 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
                       <Download className="w-3 h-3" />
                       <span className="hidden sm:inline">Unduh</span>
                     </button>
-                    {isAdmin && (
+                    {canDelete(photo) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteSingle(photo.id) }}
                         className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/30 text-white text-xs hover:bg-red-500/50 transition-colors"
@@ -354,7 +366,7 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
                 >
                   <Download className="w-4 h-4" />
                 </button>
-                {isAdmin && (
+                {canDelete(photo) && (
                   <button
                     onClick={e => { e.stopPropagation(); handleDeleteSingle(photo.id) }}
                     className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"

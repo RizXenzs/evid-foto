@@ -54,8 +54,8 @@ export function Header({ profile }: HeaderProps) {
           <Search className="w-4 h-4" />
         </button>
 
-        {/* Upload button (admin only) */}
-        {profile?.role === 'admin' && (
+        {/* Upload button - semua user bisa upload foto evident */}
+        {profile && (
           <button
             id="btn-upload-header"
             onClick={() => setUploadModalOpen(true)}

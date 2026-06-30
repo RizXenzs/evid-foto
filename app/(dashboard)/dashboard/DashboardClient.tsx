@@ -4,10 +4,12 @@ import { Images, FolderOpen, Users, HardDrive, TrendingUp, Upload } from 'lucide
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { formatBytes, formatDateTime, timeAgo, ACTION_LABELS, getInitials } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
-import type { Profile, ActivityLog } from '@/types'
+import { UploadModal } from '@/components/photos/UploadModal'
+import type { Profile, ActivityLog, Folder } from '@/types'
 
 interface DashboardClientProps {
   profile: Profile | null
+  folders: Folder[]
   stats: {
     total_photos: number
     total_folders: number
@@ -18,7 +20,7 @@ interface DashboardClientProps {
   recentActivity: any[]
 }
 
-export function DashboardClient({ profile, stats, recentActivity }: DashboardClientProps) {
+export function DashboardClient({ profile, folders, stats, recentActivity }: DashboardClientProps) {
   const { setUploadModalOpen } = useAppStore()
 
   const statCards = [
@@ -50,7 +52,8 @@ export function DashboardClient({ profile, stats, recentActivity }: DashboardCli
             Selamat datang, <span className="text-foreground font-medium">{profile?.full_name || 'Admin'}</span>!
           </p>
         </div>
-        {profile?.role === 'admin' && (
+        {/* Upload button - semua user bisa upload foto laporan */}
+        {profile && (
           <button
             id="btn-upload-dashboard"
             onClick={() => setUploadModalOpen(true)}
@@ -151,6 +154,8 @@ export function DashboardClient({ profile, stats, recentActivity }: DashboardCli
           </div>
         </div>
       </div>
+      {/* Upload Modal - tersedia di semua halaman dashboard */}
+      <UploadModal folders={folders} />
     </div>
   )
 }
