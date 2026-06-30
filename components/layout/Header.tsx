@@ -81,16 +81,26 @@ export function Header({ profile }: HeaderProps) {
 
         {/* Avatar */}
         {profile && (
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}
-            onClick={() => router.push('/profile')}
-            title="Profil Saya"
-          >
-            {profile.avatar_url
-              ? <img src={profile.avatar_url} className="w-9 h-9 rounded-full object-cover" alt="" />
-              : getInitials(profile.full_name || profile.email)
-            }
+          <div className="relative">
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}
+              onClick={() => router.push(profile.avatar_url ? '/profile' : '/setup-profile')}
+              title={profile.avatar_url ? 'Profil Saya' : 'Upload Foto Profil'}
+            >
+              {profile.avatar_url
+                ? <img src={profile.avatar_url} className="w-9 h-9 rounded-full object-cover" alt="" />
+                : getInitials(profile.full_name || profile.email)
+              }
+            </div>
+            {/* Dot orange jika belum punya foto profil */}
+            {!profile.avatar_url && (
+              <div
+                className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-orange-500 border-2"
+                style={{ borderColor: 'hsl(var(--background))' }}
+                title="Upload foto profil"
+              />
+            )}
           </div>
         )}
       </div>

@@ -55,11 +55,19 @@ export default function RegisterPage() {
     })
 
     if (error) {
+      let errorMessage = error.message
+      if (error.message === 'User already registered') {
+        errorMessage = 'Email ini sudah terdaftar. Silakan login.'
+      } else if (error.message.includes('email rate limit')) {
+        errorMessage = 'Terlalu banyak pendaftaran dalam waktu singkat. Tunggu beberapa menit lalu coba lagi.'
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = 'Batas pengiriman email tercapai. Coba lagi dalam beberapa menit.'
+      } else if (error.message.includes('invalid email')) {
+        errorMessage = 'Format email tidak valid. Periksa kembali.'
+      }
       toast({
         title: 'Pendaftaran Gagal',
-        description: error.message === 'User already registered'
-          ? 'Email ini sudah terdaftar. Silakan login.'
-          : error.message,
+        description: errorMessage,
         variant: 'destructive',
       })
       setLoading(false)
@@ -90,10 +98,11 @@ export default function RegisterPage() {
 
     toast({
       title: 'Pendaftaran Berhasil! 🎉',
-      description: 'Akun Anda telah dibuat. Silakan masuk.',
+      description: 'Akun Anda telah dibuat. Sekarang pasang foto profil Anda.',
     })
 
-    setTimeout(() => router.push('/login'), 1500)
+    // Langsung ke halaman setup profil untuk upload foto
+    setTimeout(() => router.push('/setup-profile'), 1000)
     setLoading(false)
   }
 

@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Images, FolderOpen, Calendar, Search,
   Download, Users, Trash2, User, Settings, Camera,
-  LogOut, Menu, X, Upload, ChevronRight
+  LogOut, Menu, X, Upload, ChevronRight, UserCircle
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
@@ -76,7 +76,7 @@ export function MobileNav({ profile }: MobileNavProps) {
             <span className="text-[10px] font-medium">{item.label}</span>
           </Link>
         ))}
-        {/* Menu button */}
+        {/* Avatar / Menu button */}
         <button
           onClick={() => setDrawerOpen(true)}
           className={cn(
@@ -84,7 +84,24 @@ export function MobileNav({ profile }: MobileNavProps) {
             'text-slate-500 hover:text-slate-300'
           )}
         >
-          <Menu className="w-5 h-5" />
+          {profile ? (
+            <div className="relative">
+              <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[9px] font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}
+              >
+                {profile.avatar_url
+                  ? <img src={profile.avatar_url} className="w-6 h-6 rounded-full object-cover" alt="" />
+                  : getInitials(profile.full_name || profile.email)
+                }
+              </div>
+              {/* Dot indicator jika belum ada foto profil */}
+              {!profile.avatar_url && (
+                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-orange-500 border border-[#0F172A]" />
+              )}
+            </div>
+          ) : (
+            <Menu className="w-5 h-5" />
+          )}
           <span className="text-[10px] font-medium">Menu</span>
         </button>
       </nav>
@@ -141,13 +158,17 @@ export function MobileNav({ profile }: MobileNavProps) {
           <div className="mx-4 mt-4 p-3 rounded-2xl border border-white/5 flex items-center gap-3"
             style={{ background: 'rgba(255,255,255,0.03)' }}
           >
-            <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white overflow-hidden"
+            <div className="relative w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white overflow-hidden"
               style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}
             >
               {profile.avatar_url
                 ? <img src={profile.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="" />
                 : getInitials(profile.full_name || profile.email)
               }
+              {/* Dot jika belum ada foto */}
+              {!profile.avatar_url && (
+                <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-orange-500 border-2 border-[#0F172A] z-10" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">{profile.full_name || 'User'}</p>
@@ -156,6 +177,28 @@ export function MobileNav({ profile }: MobileNavProps) {
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${profile.role === 'admin' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
               {profile.role === 'admin' ? 'Admin' : 'User'}
             </span>
+          </div>
+        )}
+
+        {/* Banner upload foto untuk user yang belum punya foto profil */}
+        {profile && !profile.avatar_url && (
+          <div className="mx-4 mt-3">
+            <button
+              onClick={() => { router.push('/setup-profile'); setDrawerOpen(false) }}
+              className="w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, rgba(249,115,22,0.15), rgba(234,88,12,0.1))', border: '1px solid rgba(249,115,22,0.25)' }}
+            >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(249,115,22,0.2)' }}
+              >
+                <UserCircle className="w-5 h-5 text-orange-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-orange-300">Foto profil belum dipasang</p>
+                <p className="text-[11px] text-orange-400/70 mt-0.5">Tap untuk upload foto profil</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-orange-400 flex-shrink-0" />
+            </button>
           </div>
         )}
 

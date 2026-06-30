@@ -34,7 +34,7 @@ export default function LoginPage() {
       return
     }
 
-    // Log activity
+    // Log activity + cek avatar untuk user baru
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('activity_logs').insert({
@@ -43,6 +43,20 @@ export default function LoginPage() {
         target_type: 'user',
         target_name: email,
       })
+
+      // Cek apakah user sudah punya foto profil
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single()
+
+      // Jika belum ada foto profil, arahkan ke halaman setup
+      if (!profile?.avatar_url) {
+        router.push('/setup-profile')
+        router.refresh()
+        return
+      }
     }
 
     router.push('/dashboard')

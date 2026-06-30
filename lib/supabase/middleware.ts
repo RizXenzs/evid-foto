@@ -29,9 +29,12 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Public routes
+  // Public routes (dapat diakses tanpa login)
   const publicRoutes = ['/login', '/register', '/forgot-password', '/auth/callback']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+
+  // Routes yang butuh login tapi tidak diredirect ke /dashboard setelah login:
+  // /setup-profile, /register (sudah ditangani di pengecekan login di bawah)
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
@@ -39,6 +42,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Jika sudah login dan mencoba akses login/root, arahkan ke dashboard
+  // (tidak redirect saat di /register atau /setup-profile)
   if (user && (pathname === '/login' || pathname === '/')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'

@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Images, FolderOpen, Calendar, Search,
   Download, Users, Trash2, User, Settings, Camera,
-  ChevronLeft, ChevronRight, LogOut
+  ChevronLeft, ChevronRight, LogOut, UserCircle, Upload
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import type { Profile } from '@/types'
@@ -143,18 +143,44 @@ export function Sidebar({ profile }: SidebarProps) {
           </Link>
         ))}
 
+        {/* Banner upload foto untuk user yang belum punya foto profil (expanded) */}
+        {!collapsed && profile && !profile.avatar_url && (
+          <button
+            onClick={() => router.push('/setup-profile')}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl mt-2 text-left transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, rgba(249,115,22,0.15), rgba(234,88,12,0.08))', border: '1px solid rgba(249,115,22,0.25)' }}
+          >
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(249,115,22,0.2)' }}
+            >
+              <Upload className="w-3.5 h-3.5 text-orange-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-orange-300 leading-tight">Pasang foto profil</p>
+              <p className="text-[10px] text-orange-400/60 mt-0.5">Klik untuk upload foto</p>
+            </div>
+          </button>
+        )}
+
         {/* User info */}
         {!collapsed && profile && (
           <div className="flex items-center gap-3 px-3 py-3 rounded-xl mt-2 border border-white/5"
             style={{ background: 'rgba(255,255,255,0.03)' }}
           >
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+            <div
+              className="relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 cursor-pointer overflow-hidden"
               style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}
+              onClick={() => router.push(profile.avatar_url ? '/profile' : '/setup-profile')}
+              title={profile.avatar_url ? 'Profil Saya' : 'Upload Foto Profil'}
             >
               {profile.avatar_url
                 ? <img src={profile.avatar_url} className="w-8 h-8 rounded-full object-cover" alt="" />
                 : getInitials(profile.full_name || profile.email)
               }
+              {/* Orange dot indicator */}
+              {!profile.avatar_url && (
+                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-orange-500 border border-[#0A0F1E]" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{profile.full_name || 'User'}</p>
@@ -166,14 +192,32 @@ export function Sidebar({ profile }: SidebarProps) {
           </div>
         )}
 
-        {collapsed && (
-          <button
-            onClick={handleLogout}
-            className="nav-item justify-center px-2 w-full hover:text-red-400"
-            title="Logout"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+        {/* Collapsed mode: dot indicator + logout */}
+        {collapsed && profile && (
+          <div className="flex flex-col items-center gap-1 mt-2">
+            {/* Avatar dengan dot indicator jika belum punya foto */}
+            <button
+              onClick={() => router.push(profile.avatar_url ? '/profile' : '/setup-profile')}
+              className="relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white overflow-hidden mb-1"
+              style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}
+              title={profile.avatar_url ? 'Profil Saya' : 'Upload Foto Profil'}
+            >
+              {profile.avatar_url
+                ? <img src={profile.avatar_url} className="w-8 h-8 rounded-full object-cover" alt="" />
+                : getInitials(profile.full_name || profile.email)
+              }
+              {!profile.avatar_url && (
+                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-orange-500 border border-[#0A0F1E]" />
+              )}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="nav-item justify-center px-2 w-full hover:text-red-400"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         )}
       </div>
 
