@@ -167,7 +167,12 @@ export async function DELETE(request: Request) {
     }
   }
 
-  const { error } = await supabase
+  const supabaseAdmin = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { error } = await supabaseAdmin
     .from('photos')
     .update({ is_deleted: true, deleted_at: new Date().toISOString() })
     .in('id', ids)
@@ -177,7 +182,7 @@ export async function DELETE(request: Request) {
   }
 
   // Log activity
-  await supabase.from('activity_logs').insert({
+  await supabaseAdmin.from('activity_logs').insert({
     user_id: user.id,
     action: 'delete',
     target_type: 'photo',

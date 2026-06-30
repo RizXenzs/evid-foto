@@ -147,24 +147,23 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
     if (!deleteConfirm || deleteConfirm.length === 0) return
     setDeleting(true)
 
-    const { error } = await supabase
-      .from('photos')
-      .update({ is_deleted: true, deleted_at: new Date().toISOString() })
-      .in('id', deleteConfirm)
-
-    if (error) {
-      toast({ title: 'Gagal Hapus', description: error.message, variant: 'destructive' })
-    } else {
-      await supabase.from('activity_logs').insert({
-        user_id: userId,
-        action: 'delete',
-        target_type: 'photo',
-        target_name: `${deleteConfirm.length} foto`,
-        metadata: { ids: deleteConfirm },
+    try {
+      const res = await fetch('/api/photos', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: deleteConfirm })
       })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Gagal menghapus foto')
+      }
+
       toast({ title: 'Foto Dihapus', description: `${deleteConfirm.length} foto telah dipindahkan ke sampah.` })
       clearSelection()
       fetchPhotos()
+    } catch (err: any) {
+      toast({ title: 'Gagal Hapus', description: err.message, variant: 'destructive' })
     }
 
     setDeleting(false)
