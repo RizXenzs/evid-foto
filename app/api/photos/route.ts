@@ -35,6 +35,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ 
+        error: 'Konfigurasi server salah: SUPABASE_SERVICE_ROLE_KEY belum ditambahkan di Environment Variables Vercel Anda.' 
+      }, { status: 500 })
+    }
+
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
