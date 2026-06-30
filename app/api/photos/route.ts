@@ -48,17 +48,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
-    const title = formData.get('title') as string | null
-    const caption = formData.get('caption') as string || ''
-    const location = formData.get('location') as string || ''
-    const workDate = formData.get('workDate') as string || new Date().toISOString().split('T')[0]
-    const folderId = formData.get('folderId') as string || null
-    const tagsString = formData.get('tags') as string || ''
+    const body = await request.json()
+    const {
+      title,
+      caption,
+      fileUrl,
+      fileName,
+      fileSize,
+      fileType,
+      location,
+      workDate,
+      folderId,
+      tags
+    } = body
 
-    if (!file || !title) {
-      return NextResponse.json({ error: 'file dan title wajib diisi' }, { status: 400 })
+    if (!title || !fileUrl || !fileName) {
+      return NextResponse.json({ error: 'title, fileUrl, dan fileName wajib diisi' }, { status: 400 })
     }
 
     // Buat admin client (bypass RLS)
@@ -67,43 +72,22 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Upload file ke storage bucket 'photos'
-    const ext = file.name.split('.').pop() || 'jpg'
-    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from('photos')
-      .upload(fileName, buffer, {
-        contentType: file.type,
-        upsert: false,
-      })
-
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError)
-      return NextResponse.json({ error: uploadError.message }, { status: 500 })
-    }
-
-    // Dapatkan public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
-      .from('photos')
-      .getPublicUrl(fileName)
-
-    const tagArray = tagsString.split(',').map(t => t.trim()).filter(Boolean)
+    const tagArray = typeof tags === 'string' 
+      ? tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+      : Array.isArray(tags) ? tags : []
 
     // Insert data ke tabel public.photos (bypass RLS)
     const { data: dbData, error: dbError } = await supabaseAdmin
       .from('photos')
       .insert({
         title,
-        caption,
-        file_url: publicUrl,
-        file_name: file.name,
-        file_size: file.size,
-        file_type: file.type,
-        location,
-        work_date: workDate,
+        caption: caption || '',
+        file_url: fileUrl,
+        file_name: fileName,
+        file_size: fileSize || 0,
+        file_type: fileType || 'image/jpeg',
+        location: location || '',
+        work_date: workDate || new Date().toISOString().split('T')[0],
         uploaded_by: user.id,
         folder_id: folderId || null,
         tags: tagArray,
@@ -122,7 +106,7 @@ export async function POST(request: Request) {
       action: 'upload',
       target_type: 'photo',
       target_name: title,
-      metadata: { file_name: file.name, file_size: file.size },
+      metadata: { file_name: fileName, file_size: fileSize },
     })
 
     return NextResponse.json({ success: true, photo: dbData })

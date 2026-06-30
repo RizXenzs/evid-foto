@@ -73,28 +73,65 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
     for (let i = 0; i < files.length; i++) {
       const uploadFile = files[i]
       setFiles(prev => prev.map((f, idx) =>
-        idx === i ? { ...f, status: 'uploading', progress: 30 } : f
+        idx === i ? { ...f, status: 'uploading', progress: 10 } : f
       ))
 
-      try {
-        const fileTitle = files.length === 1 ? title : `${title} (${i + 1})`
-        const fd = new FormData()
-        fd.append('file', uploadFile.file)
-        fd.append('title', fileTitle)
-        fd.append('caption', caption)
-        fd.append('location', location)
-        fd.append('workDate', workDate)
-        fd.append('folderId', selectedFolder || '')
-        fd.append('tags', tags)
+      const fileTitle = files.length === 1 ? title : `${title} (${i + 1})`
 
-        const res = await fetch('/api/photos', {
+      try {
+        // Step 1: Dapatkan signed URL dari backend server
+        const signRes = await fetch('/api/photos/sign', {
           method: 'POST',
-          body: fd,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName: uploadFile.file.name, fileType: uploadFile.file.type })
         })
 
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.error || 'Upload gagal')
+        if (!signRes.ok) {
+          const signErr = await signRes.json()
+          throw new Error(signErr.error || 'Gagal menyiapkan tanda tangan upload')
+        }
+
+        const { token, path } = await signRes.json()
+
+        setFiles(prev => prev.map((f, idx) =>
+          idx === i ? { ...f, progress: 40 } : f
+        ))
+
+        // Step 2: Upload langsung dari browser ke Supabase Storage (Bypass limit 4.5MB Vercel)
+        const { error: uploadError } = await supabase.storage
+          .from('photos')
+          .uploadToSignedUrl(path, token, uploadFile.file)
+
+        if (uploadError) throw uploadError
+
+        setFiles(prev => prev.map((f, idx) =>
+          idx === i ? { ...f, progress: 75 } : f
+        ))
+
+        // Step 3: Dapatkan public url file di storage
+        const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(path)
+
+        // Step 4: Simpan JSON metadata ke database (payload sangat kecil, aman via Vercel)
+        const dbRes = await fetch('/api/photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: fileTitle,
+            caption,
+            fileUrl: publicUrl,
+            fileName: uploadFile.file.name,
+            fileSize: uploadFile.file.size,
+            fileType: uploadFile.file.type,
+            location,
+            workDate,
+            folderId: selectedFolder || null,
+            tags
+          })
+        })
+
+        if (!dbRes.ok) {
+          const dbErr = await dbRes.json()
+          throw new Error(dbErr.error || 'Gagal menyimpan data foto ke database')
         }
 
         setFiles(prev => prev.map((f, idx) =>
