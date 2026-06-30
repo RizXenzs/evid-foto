@@ -1,5 +1,7 @@
 # EvidFoto
 
+🌐 **Live Demo:** [evid-foto.vercel.app](https://evid-foto.vercel.app)
+
 Aplikasi manajemen foto pekerjaan berbasis web. Dibangun dengan Next.js 14, Tailwind CSS, shadcn/ui, dan Supabase.
 
 ## Fitur

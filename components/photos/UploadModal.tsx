@@ -155,24 +155,29 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
   if (!uploadModalOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-border shadow-2xl slide-up overflow-hidden"
+      {/* Modal - full bottom sheet on mobile, centered on desktop */}
+      <div className="relative w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-2xl border border-border shadow-2xl slide-up overflow-hidden"
         style={{ background: 'hsl(var(--card))' }}
       >
+        {/* Mobile handle */}
+        <div className="flex sm:hidden justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 bg-border rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Upload Foto</h2>
-          <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition-colors">
+        <div className="flex items-center justify-between px-5 md:px-6 py-3 md:py-4 border-b border-border flex-shrink-0">
+          <h2 className="text-base md:text-lg font-semibold text-foreground">Upload Foto</h2>
+          <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-5">
           {/* Dropzone */}
           <div
             {...getRootProps()}
@@ -309,22 +314,24 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-t border-border flex-shrink-0"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        >
           <p className="text-sm text-muted-foreground">{files.length} file dipilih</p>
-          <div className="flex gap-3">
-            <button onClick={handleClose} className="px-4 py-2 rounded-xl border border-border text-foreground text-sm hover:bg-muted transition-colors">
+          <div className="flex gap-2 md:gap-3">
+            <button onClick={handleClose} className="px-3 md:px-4 py-2 rounded-xl border border-border text-foreground text-sm hover:bg-muted transition-colors">
               Batal
             </button>
             <button
               id="btn-start-upload"
               onClick={handleUpload}
               disabled={uploading || files.length === 0 || !title}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white
+              className="flex items-center gap-2 px-4 md:px-5 py-2 rounded-xl text-sm font-semibold text-white
                 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
                 hover:shadow-lg hover:shadow-orange-500/30"
               style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)' }}
             >
-              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" />Mengupload...</> : <><Upload className="w-4 h-4" />Upload {files.length > 0 ? `(${files.length})` : ''}</>}
+              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" />Upload...</> : <><Upload className="w-4 h-4" />Upload {files.length > 0 ? `(${files.length})` : ''}</>}
             </button>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Sun, Moon, Bell, Upload, Search, LogOut } from 'lucide-react'
+import { Sun, Moon, Upload, Search, Camera } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
 import type { Profile } from '@/types'
@@ -18,34 +18,48 @@ export function Header({ profile }: HeaderProps) {
   const router = useRouter()
   const supabase = createClient()
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
-
   return (
-    <header className="h-16 border-b border-border flex items-center justify-between px-6 flex-shrink-0 bg-background/95 backdrop-blur-sm">
-      {/* Left: Search quick action */}
+    <header className="h-14 md:h-16 border-b border-border flex items-center justify-between px-4 md:px-6 flex-shrink-0 bg-background/95 backdrop-blur-sm">
+      {/* Left: Logo on mobile, search on desktop */}
       <div className="flex items-center gap-3">
+        {/* Mobile logo */}
+        <div className="flex md:hidden items-center gap-2">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)' }}
+          >
+            <Camera className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-white font-bold text-base">EvidFoto</span>
+        </div>
+
+        {/* Desktop search */}
         <button
           onClick={() => router.push('/search')}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-muted-foreground border border-border
+          className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-muted-foreground border border-border
             hover:border-primary/50 hover:text-foreground transition-all duration-200 bg-muted/50"
         >
           <Search className="w-4 h-4" />
-          <span className="hidden md:block">Cari foto, folder, tag...</span>
+          <span>Cari foto, folder, tag...</span>
         </button>
       </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Mobile search icon */}
+        <button
+          onClick={() => router.push('/search')}
+          className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground
+            hover:text-foreground hover:bg-muted transition-all duration-200 border border-border"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+
         {/* Upload button (admin only) */}
         {profile?.role === 'admin' && (
           <button
             id="btn-upload-header"
             onClick={() => setUploadModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white
+            className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-sm font-medium text-white
               transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5"
             style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)' }}
           >
@@ -67,17 +81,16 @@ export function Header({ profile }: HeaderProps) {
 
         {/* Avatar */}
         {profile && (
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}
-              onClick={() => router.push('/profile')}
-              title="Profil Saya"
-            >
-              {profile.avatar_url
-                ? <img src={profile.avatar_url} className="w-9 h-9 rounded-full object-cover" alt="" />
-                : getInitials(profile.full_name || profile.email)
-              }
-            </div>
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' }}
+            onClick={() => router.push('/profile')}
+            title="Profil Saya"
+          >
+            {profile.avatar_url
+              ? <img src={profile.avatar_url} className="w-9 h-9 rounded-full object-cover" alt="" />
+              : getInitials(profile.full_name || profile.email)
+            }
           </div>
         )}
       </div>

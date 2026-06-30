@@ -16,6 +16,10 @@ const nextConfig = {
       },
     ],
   },
+  // Production URL
+  env: {
+    NEXT_PUBLIC_SITE_URL: 'https://evid-foto.vercel.app',
+  },
 }
 
 export default nextConfig
