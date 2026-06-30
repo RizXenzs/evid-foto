@@ -35,9 +35,9 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
   const isAdmin = userRole === 'admin'
   // User bisa hapus foto miliknya sendiri, admin bisa hapus semua
   const canDelete = (photo: Photo) => isAdmin || photo.uploaded_by === userId
-  const canDeleteSelected = isAdmin || selectedPhotos.every(id => {
+  const hasDeletableSelected = selectedPhotos.some(id => {
     const photo = photos.find(p => p.id === id)
-    return photo?.uploaded_by === userId
+    return photo && (isAdmin || photo.uploaded_by === userId)
   })
 
   const fetchPhotos = useCallback(async () => {
@@ -183,7 +183,7 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Delete selected (admin bisa hapus semua, user hapus miliknya) */}
-          {selectedPhotos.length > 0 && canDeleteSelected && (
+          {selectedPhotos.length > 0 && hasDeletableSelected && (
             <button
               onClick={handleDeleteSelected}
               className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-sm font-medium text-white

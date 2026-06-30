@@ -75,18 +75,16 @@ export function FolderDetailClient({ folder, initialPhotos, subfolders, folders,
           </div>
         </div>
 
-        {/* Upload button for this folder */}
-        {userRole === 'admin' && (
-          <button
-            onClick={handleOpenUpload}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white
-              transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5"
-            style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)' }}
-          >
-            <Upload className="w-4 h-4" />
-            Upload ke Folder Ini
-          </button>
-        )}
+        {/* Upload button for this folder - izinkan semua user upload foto evident ke folder */}
+        <button
+          onClick={handleOpenUpload}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white
+            transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5"
+          style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)' }}
+        >
+          <Upload className="w-4 h-4" />
+          Upload ke Folder Ini
+        </button>
       </div>
 
       {/* Subfolders */}
@@ -117,17 +115,15 @@ export function FolderDetailClient({ folder, initialPhotos, subfolders, folders,
           <div className="flex flex-col items-center justify-center py-16 text-center glass-card">
             <ImageIcon className="w-10 h-10 text-muted-foreground mb-3" />
             <p className="text-muted-foreground mb-4">Belum ada foto di folder ini</p>
-            {userRole === 'admin' && (
-              <button
-                onClick={handleOpenUpload}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white
-                  transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/30"
-                style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)' }}
-              >
-                <Upload className="w-4 h-4" />
-                Upload Foto Pertama
-              </button>
-            )}
+             <button
+               onClick={handleOpenUpload}
+               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white
+                 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/30"
+               style={{ background: 'linear-gradient(135deg, #F97316, #EA580C)' }}
+             >
+               <Upload className="w-4 h-4" />
+               Upload Foto Pertama
+             </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
