@@ -68,58 +68,34 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
     if (files.length === 0) return
     setUploading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const tagArray = tags.split(',').map(t => t.trim()).filter(Boolean)
     let doneCount = 0
 
     for (let i = 0; i < files.length; i++) {
       const uploadFile = files[i]
       setFiles(prev => prev.map((f, idx) =>
-        idx === i ? { ...f, status: 'uploading', progress: 10 } : f
+        idx === i ? { ...f, status: 'uploading', progress: 30 } : f
       ))
 
       try {
-        const ext = uploadFile.file.name.split('.').pop()
-        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const fileTitle = files.length === 1 ? title : `${title} (${i + 1})`
+        const fd = new FormData()
+        fd.append('file', uploadFile.file)
+        fd.append('title', fileTitle)
+        fd.append('caption', caption)
+        fd.append('location', location)
+        fd.append('workDate', workDate)
+        fd.append('folderId', selectedFolder || '')
+        fd.append('tags', tags)
 
-        const { data: storageData, error: storageError } = await supabase.storage
-          .from('photos')
-          .upload(fileName, uploadFile.file, { upsert: false })
-
-        if (storageError) throw storageError
-
-        setFiles(prev => prev.map((f, idx) =>
-          idx === i ? { ...f, progress: 70 } : f
-        ))
-
-        const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(fileName)
-
-        const { error: dbError } = await supabase.from('photos').insert({
-          title: files.length === 1 ? title : `${title} (${i + 1})`,
-          caption,
-          file_url: publicUrl,
-          file_name: uploadFile.file.name,
-          file_size: uploadFile.file.size,
-          file_type: uploadFile.file.type,
-          location,
-          work_date: workDate,
-          uploaded_by: user.id,
-          folder_id: selectedFolder || null,
-          tags: tagArray,
+        const res = await fetch('/api/photos', {
+          method: 'POST',
+          body: fd,
         })
 
-        if (dbError) throw dbError
-
-        // Log activity
-        await supabase.from('activity_logs').insert({
-          user_id: user.id,
-          action: 'upload',
-          target_type: 'photo',
-          target_name: title,
-          metadata: { file_name: uploadFile.file.name, file_size: uploadFile.file.size },
-        })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || 'Upload gagal')
+        }
 
         setFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, status: 'done', progress: 100 } : f
