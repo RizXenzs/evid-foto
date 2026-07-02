@@ -77,8 +77,31 @@ CREATE TABLE IF NOT EXISTS public.photos (
   is_deleted BOOLEAN NOT NULL DEFAULT false,
   deleted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Approval system (run ALTER TABLE in Supabase if not exists)
+  approval_status VARCHAR(20) DEFAULT 'approved', -- 'pending', 'approved', 'rejected'
+  approval_note TEXT,
+  approved_by UUID REFERENCES auth.users(id),
+  approved_at TIMESTAMPTZ
 );
+
+-- ============================================
+-- PHOTO COMMENTS (run in Supabase SQL Editor)
+-- ============================================
+-- CREATE TABLE IF NOT EXISTS public.photo_comments (
+--   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   photo_id UUID REFERENCES photos(id) ON DELETE CASCADE NOT NULL,
+--   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+--   comment TEXT NOT NULL,
+--   parent_id UUID REFERENCES photo_comments(id) ON DELETE CASCADE,
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   updated_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+-- ALTER TABLE photo_comments ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "read_comments" ON photo_comments FOR SELECT TO authenticated USING (true);
+-- CREATE POLICY "insert_comments" ON photo_comments FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+-- CREATE POLICY "delete_own_comments" ON photo_comments FOR DELETE TO authenticated USING (auth.uid() = user_id);
+-- ALTER PUBLICATION supabase_realtime ADD TABLE photo_comments;
 
 -- ============================================
 -- ACTIVITY LOGS

@@ -10,6 +10,7 @@ export type UserRole = 'admin' | 'user'
 export type ActionType = 'upload' | 'download' | 'delete' | 'restore' | 'move' | 'login' | 'create_folder' | 'delete_folder' | 'update_profile'
 export type TargetType = 'photo' | 'folder' | 'user'
 export type DownloadType = 'single' | 'bulk'
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 
 export interface Profile {
   id: string
@@ -59,6 +60,11 @@ export interface Photo {
   deleted_at: string | null
   created_at: string
   updated_at: string
+  // Approval
+  approval_status: ApprovalStatus
+  approval_note: string | null
+  approved_by: string | null
+  approved_at: string | null
   // Relations
   uploader?: Profile
   folder?: Folder
@@ -111,4 +117,17 @@ export interface PhotoFilter {
 export interface PhotoSort {
   field: 'upload_date' | 'work_date' | 'title' | 'file_size'
   direction: 'asc' | 'desc'
+}
+
+export interface PhotoComment {
+  id: string
+  photo_id: string
+  user_id: string | null
+  comment: string
+  parent_id: string | null
+  created_at: string
+  updated_at: string
+  // Relations
+  user?: Profile
+  replies?: PhotoComment[]
 }

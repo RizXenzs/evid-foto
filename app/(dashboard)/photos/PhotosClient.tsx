@@ -27,8 +27,9 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
   const [downloading, setDownloading] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
   const [filterFolder, setFilterFolder] = useState('')
+  const [filterApproval, setFilterApproval] = useState('')
   const [sortBy, setSortBy] = useState('upload_date_desc')
-  const [searchTag, setSearchTag] = useState('')
+  const [searchTag, setSearchTag] = useState('') 
   const [deleteConfirm, setDeleteConfirm] = useState<string[] | null>(null) // IDs to delete
   const [deleting, setDeleting] = useState(false)
   const { viewMode, setViewMode, selectedPhotos, togglePhotoSelection, selectAllPhotos, clearSelection, uploadModalOpen } = useAppStore()
@@ -49,6 +50,13 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
       .select('*, uploader:profiles(full_name, email, avatar_url), folder:folders(name, color)')
       .eq('is_deleted', false)
 
+    // User biasa hanya lihat approved
+    if (!isAdmin) {
+      query = query.eq('approval_status', 'approved')
+    } else if (filterApproval) {
+      query = query.eq('approval_status', filterApproval)
+    }
+
     if (filterFolder) query = query.eq('folder_id', filterFolder)
     if (searchTag) query = query.contains('tags', [searchTag])
 
@@ -59,7 +67,7 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
 
     const { data } = await query
     if (data) setPhotos(data as Photo[])
-  }, [filterFolder, sortBy, searchTag])
+  }, [filterFolder, filterApproval, sortBy, searchTag, isAdmin])
 
   useEffect(() => { fetchPhotos() }, [fetchPhotos])
 
@@ -300,6 +308,20 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
           <option value="title_desc">Nama Z-A</option>
         </select>
 
+        {/* Approval filter — admin only */}
+        {isAdmin && (
+          <select
+            value={filterApproval}
+            onChange={e => setFilterApproval(e.target.value)}
+            className="px-3 md:px-4 py-2 rounded-xl border border-border bg-muted text-foreground text-sm outline-none focus:border-primary transition-all"
+          >
+            <option value="">Semua Status</option>
+            <option value="pending">🟡 Menunggu</option>
+            <option value="approved">✅ Disetujui</option>
+            <option value="rejected">❌ Ditolak</option>
+          </select>
+        )}
+
         {photos.length > 0 && (
           <button
             onClick={() => selectedPhotos.length === photos.length ? clearSelection() : selectAllPhotos(photos.map(p => p.id))}
@@ -361,6 +383,18 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
                   </div>
                 </div>
               </div>
+              {/* Approval badge (admin only) */}
+              {isAdmin && photo.approval_status !== 'approved' && (
+                <div className="absolute top-1.5 right-1.5 md:top-2 md:right-2 z-10">
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                    photo.approval_status === 'pending'
+                      ? 'bg-yellow-500/90 text-yellow-900'
+                      : 'bg-red-500/90 text-white'
+                  }`}>
+                    {photo.approval_status === 'pending' ? '⏳' : '❌'}
+                  </span>
+                </div>
+              )}
               {/* Select checkbox */}
               <button
                 onClick={(e) => { e.stopPropagation(); togglePhotoSelection(photo.id) }}
@@ -432,6 +466,8 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onDownload={handleDownload}
+          currentUserId={userId}
+          isAdmin={isAdmin}
         />
       )}
 

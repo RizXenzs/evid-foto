@@ -76,6 +76,16 @@ export async function POST(request: Request) {
       ? tags.split(',').map((t: string) => t.trim()).filter(Boolean)
       : Array.isArray(tags) ? tags : []
 
+    // Ambil role user untuk menentukan approval_status
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const isAdmin = profileData?.role === 'admin'
+    const approvalStatus = isAdmin ? 'approved' : 'pending'
+
     // Insert data ke tabel public.photos (bypass RLS)
     const { data: dbData, error: dbError } = await supabaseAdmin
       .from('photos')
@@ -91,6 +101,9 @@ export async function POST(request: Request) {
         uploaded_by: user.id,
         folder_id: folderId || null,
         tags: tagArray,
+        approval_status: approvalStatus,
+        approved_by: isAdmin ? user.id : null,
+        approved_at: isAdmin ? new Date().toISOString() : null,
       })
       .select()
       .single()

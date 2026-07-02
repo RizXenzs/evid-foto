@@ -10,12 +10,15 @@ export default async function PhotosPage() {
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const isAdmin = profile?.role === 'admin'
 
   const [photosResult, foldersResult] = await Promise.all([
     supabase
       .from('photos')
       .select('*, uploader:profiles(full_name, email, avatar_url), folder:folders(name, color)')
       .eq('is_deleted', false)
+      // User biasa hanya lihat foto yang sudah diapprove
+      .in('approval_status', isAdmin ? ['pending', 'approved', 'rejected'] : ['approved'])
       .order('upload_date', { ascending: false }),
     supabase.from('folders').select('*').eq('is_deleted', false).order('name'),
   ])
@@ -29,3 +32,4 @@ export default async function PhotosPage() {
     />
   )
 }
+

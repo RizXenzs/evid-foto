@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Images, FolderOpen, Calendar, Search,
   Download, Users, Trash2, User, Settings, Camera,
-  LogOut, Menu, X, Upload, ChevronRight, UserCircle, FileText
+  LogOut, Menu, X, Upload, ChevronRight, UserCircle, FileText, ShieldCheck
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
@@ -250,6 +250,20 @@ export function MobileNav({ profile }: MobileNavProps) {
         {profile?.role === 'admin' && (
           <div className="px-4 pb-3 space-y-1">
             <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-2 pb-1">Administrasi</p>
+            <Link
+              href="/approval"
+              onClick={() => setDrawerOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                isActive('/approval')
+                  ? 'text-white bg-orange-500/20 border border-orange-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              )}
+            >
+              <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+              <span className="flex-1">Approval Foto</span>
+              <ChevronRight className="w-4 h-4 opacity-50" />
+            </Link>
             {adminNavItems.map((item) => (
               <Link
                 key={item.href}

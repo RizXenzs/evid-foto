@@ -2,12 +2,12 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Images, FolderOpen, Calendar, Search,
   Download, Users, Trash2, User, Settings, Camera,
-  ChevronLeft, ChevronRight, LogOut, UserCircle, Upload, FileText
+  ChevronLeft, ChevronRight, LogOut, UserCircle, Upload, FileText, ShieldCheck
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import type { Profile } from '@/types'
@@ -40,7 +40,19 @@ export function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
   const supabase = createClient()
+
+  // Fetch pending approval count for admin badge
+  useEffect(() => {
+    if (profile?.role !== 'admin') return
+    supabase
+      .from('photos')
+      .select('id', { count: 'exact', head: true })
+      .eq('approval_status', 'pending')
+      .eq('is_deleted', false)
+      .then(({ count }) => setPendingCount(count || 0))
+  }, [profile?.role])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -107,6 +119,19 @@ export function Sidebar({ profile }: SidebarProps) {
             {!collapsed && (
               <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-3 pb-2">Administrasi</p>
             )}
+            <Link
+              href="/approval"
+              className={cn('nav-item relative', isActive('/approval') && 'active', collapsed && 'justify-center px-2')}
+              title={collapsed ? 'Approval' : undefined}
+            >
+              <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+              {!collapsed && <span className="flex-1">Approval Foto</span>}
+              {pendingCount > 0 && (
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white ${collapsed ? 'absolute -top-1 -right-1 min-w-[16px] text-center' : ''}`}>
+                  {pendingCount > 99 ? '99+' : pendingCount}
+                </span>
+              )}
+            </Link>
             {adminNavItems.map((item) => (
               <Link
                 key={item.href}
