@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Images, FolderOpen, Calendar, Search,
   Download, Users, Trash2, User, Settings, Camera,
-  LogOut, Menu, X, Upload, ChevronRight, UserCircle
+  LogOut, Menu, X, Upload, ChevronRight, UserCircle, FileText
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
@@ -226,6 +226,7 @@ export function MobileNav({ profile }: MobileNavProps) {
             { href: '/calendar', label: 'Kalender', icon: Calendar },
             { href: '/search', label: 'Pencarian', icon: Search },
             { href: '/downloads', label: 'Unduhan Saya', icon: Download },
+            { href: '/laporan', label: 'Laporan PDF', icon: FileText },
           ].map((item) => (
             <Link
               key={item.href}

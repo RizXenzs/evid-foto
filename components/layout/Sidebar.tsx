@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Images, FolderOpen, Calendar, Search,
   Download, Users, Trash2, User, Settings, Camera,
-  ChevronLeft, ChevronRight, LogOut, UserCircle, Upload
+  ChevronLeft, ChevronRight, LogOut, UserCircle, Upload, FileText
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import type { Profile } from '@/types'
@@ -23,6 +23,7 @@ const navItems = [
   { href: '/calendar', label: 'Kalender', icon: Calendar },
   { href: '/search', label: 'Pencarian', icon: Search },
   { href: '/downloads', label: 'Unduhan Saya', icon: Download },
+  { href: '/laporan', label: 'Laporan PDF', icon: FileText },
 ]
 
 const adminNavItems = [

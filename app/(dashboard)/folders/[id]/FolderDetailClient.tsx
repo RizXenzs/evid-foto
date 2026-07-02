@@ -8,6 +8,8 @@ import { useAppStore } from '@/store/useAppStore'
 import { UploadModal } from '@/components/photos/UploadModal'
 import { PhotoLightbox } from '@/components/photos/PhotoLightbox'
 import { formatDate } from '@/lib/utils'
+import { applyWatermark } from '@/lib/watermark'
+import { saveAs } from 'file-saver'
 import type { Folder } from '@/types'
 
 interface FolderDetailClientProps {
@@ -42,16 +44,19 @@ export function FolderDetailClient({ folder, initialPhotos, subfolders, folders,
 
   async function handleDownload(photo: any) {
     try {
-      const res = await fetch(photo.file_url)
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = photo.file_name || `${photo.title}.jpg`
-      a.click()
-      URL.revokeObjectURL(url)
+      // Apply watermark via Canvas API
+      const watermarkedBlob = await applyWatermark(photo)
+      const baseName = (photo.file_name || photo.title || 'foto').replace(/\.[^.]+$/, '')
+      saveAs(watermarkedBlob, `${baseName}_watermark.jpg`)
     } catch {
-      window.open(photo.file_url, '_blank')
+      // Fallback: download without watermark
+      try {
+        const res = await fetch(photo.file_url)
+        const blob = await res.blob()
+        saveAs(blob, photo.file_name || `${photo.title}.jpg`)
+      } catch {
+        window.open(photo.file_url, '_blank')
+      }
     }
   }
 

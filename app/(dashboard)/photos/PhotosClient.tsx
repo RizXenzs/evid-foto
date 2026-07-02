@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Download, LayoutGrid, List, Check, Upload, X, Loader2, Trash2, AlertTriangle } from 'lucide-react'
+import { Download, LayoutGrid, List, Check, Upload, X, Loader2, Trash2, AlertTriangle, FileSpreadsheet } from 'lucide-react'
 import { PhotoLightbox } from '@/components/photos/PhotoLightbox'
 import { UploadModal } from '@/components/photos/UploadModal'
 import { useAppStore } from '@/store/useAppStore'
 import { formatDate, formatBytes } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
+import { applyWatermark } from '@/lib/watermark'
+import { exportToExcel } from '@/lib/exportExcel'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import type { Photo, Folder } from '@/types'
@@ -23,6 +25,7 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [downloading, setDownloading] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
   const [filterFolder, setFilterFolder] = useState('')
   const [sortBy, setSortBy] = useState('upload_date_desc')
   const [searchTag, setSearchTag] = useState('')
@@ -61,11 +64,21 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
   useEffect(() => { fetchPhotos() }, [fetchPhotos])
 
   async function handleDownload(photo: Photo) {
-    const { data: { user } } = await supabase.auth.getUser()
-    const response = await fetch(photo.file_url)
-    const blob = await response.blob()
-    saveAs(blob, photo.file_name)
+    try {
+      // Apply watermark via Canvas API before downloading
+      const watermarkedBlob = await applyWatermark(photo)
+      // Preserve original extension; watermark renders as JPEG
+      const ext = photo.file_name.includes('.') ? photo.file_name.split('.').pop() : 'jpg'
+      const baseName = photo.file_name.replace(/\.[^.]+$/, '')
+      saveAs(watermarkedBlob, `${baseName}_watermark.jpg`)
+    } catch {
+      // Fallback: download without watermark if canvas fails
+      const response = await fetch(photo.file_url)
+      const blob = await response.blob()
+      saveAs(blob, photo.file_name)
+    }
 
+    const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('download_history').insert({
         user_id: user.id,
@@ -93,9 +106,17 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
 
       await Promise.all(
         selectedPhotoData.map(async (photo) => {
-          const response = await fetch(photo.file_url)
-          const blob = await response.blob()
-          zip.file(photo.file_name, blob)
+          try {
+            // Apply watermark to each photo before zipping
+            const watermarkedBlob = await applyWatermark(photo)
+            const baseName = photo.file_name.replace(/\.[^.]+$/, '')
+            zip.file(`${baseName}_watermark.jpg`, watermarkedBlob)
+          } catch {
+            // Fallback without watermark
+            const response = await fetch(photo.file_url)
+            const blob = await response.blob()
+            zip.file(photo.file_name, blob)
+          }
         })
       )
 
@@ -119,11 +140,22 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
         })
       }
       clearSelection()
-      toast({ title: 'Berhasil', description: `${selectedPhotoData.length} foto berhasil diunduh.` })
+      toast({ title: 'Berhasil', description: `${selectedPhotoData.length} foto berhasil diunduh dengan watermark.` })
     } catch (err) {
       toast({ title: 'Gagal', description: 'Terjadi kesalahan saat mengunduh.', variant: 'destructive' })
     }
     setDownloading(false)
+  }
+
+  async function handleExportExcel() {
+    setExportingExcel(true)
+    try {
+      exportToExcel(photos)
+      toast({ title: 'Export Berhasil', description: `${photos.length} foto diekspor ke Excel.` })
+    } catch (err) {
+      toast({ title: 'Export Gagal', description: 'Terjadi kesalahan saat export Excel.', variant: 'destructive' })
+    }
+    setExportingExcel(false)
   }
 
   // Delete single photo
@@ -210,6 +242,20 @@ export function PhotosClient({ initialPhotos, folders, userRole, userId }: Photo
               <X className="w-4 h-4" />
             </button>
           )}
+          {/* Export Excel button */}
+          <button
+            onClick={handleExportExcel}
+            disabled={exportingExcel || photos.length === 0}
+            className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-sm font-medium text-white
+              transition-all bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Export data foto ke Excel"
+          >
+            {exportingExcel
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <FileSpreadsheet className="w-4 h-4" />
+            }
+            <span className="hidden sm:inline">{exportingExcel ? 'Exporting...' : 'Export Excel'}</span>
+          </button>
           <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded-xl border transition-colors ${viewMode === 'grid' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}
