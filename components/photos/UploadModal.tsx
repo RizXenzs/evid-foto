@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { createClient } from '@/lib/supabase/client'
-import { X, Upload, Image, Loader2, Check, AlertCircle, FolderOpen, Tag } from 'lucide-react'
+import { X, Upload, Image, Loader2, Check, AlertCircle, FolderOpen, Tag, Camera, RefreshCw, RotateCcw, Navigation } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useToast } from '@/components/ui/use-toast'
 import type { Folder } from '@/types'
@@ -23,12 +23,25 @@ interface UploadModalProps {
 
 export function UploadModal({ folders, onSuccess }: UploadModalProps) {
   const { uploadModalOpen, setUploadModalOpen, uploadTargetFolder, setUploadTargetFolder } = useAppStore()
+  const [activeTab, setActiveTab] = useState<'upload' | 'camera'>('upload')
   const [files, setFiles] = useState<UploadFile[]>([])
   const [title, setTitle] = useState('')
   const [caption, setCaption] = useState('')
   const [location, setLocation] = useState('')
   const [workDate, setWorkDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedFolder, setSelectedFolder] = useState(uploadTargetFolder || '')
+  const [tags, setTags] = useState('')
+  const [uploading, setUploading] = useState(false)
+
+  // Camera states
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment')
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [gpsLoading, setGpsLoading] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const supabase = createClient()
+  const { toast } = useToast()
 
   // Sync selectedFolder whenever the modal opens with a target folder
   useEffect(() => {
@@ -36,10 +49,113 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
       setSelectedFolder(uploadTargetFolder || '')
     }
   }, [uploadModalOpen, uploadTargetFolder])
-  const [tags, setTags] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const supabase = createClient()
-  const { toast } = useToast()
+
+  // Stop camera stream when modal is closed
+  useEffect(() => {
+    if (!uploadModalOpen) {
+      stopCamera()
+    }
+  }, [uploadModalOpen])
+
+  const startCamera = async (facing = cameraFacing) => {
+    try {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop())
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing },
+        audio: false
+      })
+      setCameraStream(stream)
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
+    } catch (err: any) {
+      console.error(err)
+      toast({
+        title: 'Kamera Gagal Akses',
+        description: 'Pastikan memberikan izin akses kamera pada browser Anda.',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop())
+      setCameraStream(null)
+    }
+  }
+
+  const toggleFacingMode = () => {
+    const nextFacing = cameraFacing === 'user' ? 'environment' : 'user'
+    setCameraFacing(nextFacing)
+    startCamera(nextFacing)
+  }
+
+  const handleCapture = () => {
+    if (!videoRef.current) return
+    const video = videoRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const fileUrl = URL.createObjectURL(blob)
+          setCapturedImage(fileUrl)
+          
+          const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' })
+          setFiles([{
+            file,
+            preview: fileUrl,
+            progress: 0,
+            status: 'pending'
+          }])
+          
+          if (!title) {
+            setTitle(`Foto Ambil Langsung ${new Date().toLocaleTimeString()}`)
+          }
+          
+          // Request GPS Auto
+          handleGetGPS()
+        }
+      }, 'image/jpeg', 0.95)
+    }
+    stopCamera()
+  }
+
+  const handleRetake = () => {
+    setCapturedImage(null)
+    setFiles([])
+    startCamera()
+  }
+
+  const handleGetGPS = () => {
+    if ('geolocation' in navigator) {
+      setGpsLoading(true)
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(6)
+          const lng = position.coords.longitude.toFixed(6)
+          setLocation(`Lat: ${lat}, Long: ${lng}`)
+          toast({ title: 'GPS Ditemukan', description: 'Koordinat lokasi berhasil dimasukkan.' })
+          setGpsLoading(false)
+        },
+        (error) => {
+          console.error(error)
+          toast({ title: 'Gagal GPS', description: 'Izin lokasi ditolak atau GPS tidak aktif.', variant: 'destructive' })
+          setGpsLoading(false)
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      )
+    } else {
+      toast({ title: 'Tidak Didukung', description: 'Geolocation API tidak didukung di browser ini.', variant: 'destructive' })
+    }
+  }
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => ({
@@ -158,8 +274,8 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
     }
   }
 
-
   function handleClose() {
+    stopCamera()
     setUploadModalOpen(false)
     setUploadTargetFolder(null)
     setFiles([])
@@ -167,6 +283,8 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
     setCaption('')
     setLocation('')
     setTags('')
+    setCapturedImage(null)
+    setActiveTab('upload')
     setWorkDate(new Date().toISOString().split('T')[0])
   }
 
@@ -178,7 +296,7 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
       {/* Modal - full bottom sheet on mobile, centered on desktop */}
-      <div className="relative w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-2xl border border-border shadow-2xl slide-up overflow-hidden"
+      <div className="relative w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-2xl border border-border shadow-2xl slide-up overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         style={{ background: 'hsl(var(--card))' }}
       >
         {/* Mobile handle */}
@@ -194,148 +312,262 @@ export function UploadModal({ folders, onSuccess }: UploadModalProps) {
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-border bg-muted/20 flex-shrink-0">
+          <button
+            onClick={() => {
+              setActiveTab('upload')
+              stopCamera()
+              setCapturedImage(null)
+              setFiles([])
+            }}
+            className={`flex-1 py-3 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === 'upload'
+                ? 'border-primary text-primary bg-card/10'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Upload File
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('camera')
+              setFiles([])
+              setCapturedImage(null)
+              startCamera()
+            }}
+            className={`flex-1 py-3 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === 'camera'
+                ? 'border-primary text-primary bg-card/10'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Ambil Foto Langsung
+          </button>
+        </div>
+
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-5">
-          {/* Dropzone */}
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200
-              ${isDragActive
-                ? 'border-primary bg-primary/5 scale-[1.01]'
-                : 'border-border hover:border-primary/50 hover:bg-muted/30'
-              }`}
-          >
-            <input {...getInputProps()} />
-            <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
-            <p className="font-medium text-foreground">
-              {isDragActive ? 'Lepaskan foto di sini!' : 'Drag & drop foto ke sini'}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">atau klik untuk pilih file</p>
-            <p className="text-xs text-muted-foreground mt-2">JPG, PNG, WEBP • Maks. 50MB per file</p>
-          </div>
+          {/* Upload Tab */}
+          {activeTab === 'upload' && (
+            <>
+              {/* Dropzone */}
+              <div
+                {...getRootProps()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200
+                  ${isDragActive
+                    ? 'border-primary bg-primary/5 scale-[1.01]'
+                    : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                  }`}
+              >
+                <input {...getInputProps()} />
+                <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                <p className="font-medium text-foreground">
+                  {isDragActive ? 'Lepaskan foto di sini!' : 'Drag & drop foto ke sini'}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">atau klik untuk pilih file</p>
+                <p className="text-xs text-muted-foreground mt-2">JPG, PNG, WEBP • Maks. 50MB per file</p>
+              </div>
 
-          {/* File previews */}
-          {files.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
-              {files.map((f, i) => (
-                <div key={i} className="relative rounded-xl overflow-hidden aspect-square group">
-                  <img src={f.preview} alt="" className="w-full h-full object-cover" />
-                  {f.status === 'uploading' && (
-                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
-                      <Loader2 className="w-6 h-6 text-white animate-spin mb-1" />
-                      <div className="w-full px-3">
-                        <div className="h-1 bg-white/20 rounded-full overflow-hidden">
-                          <div className="h-full bg-primary transition-all duration-300 rounded-full"
-                            style={{ width: `${f.progress}%` }} />
+              {/* File previews */}
+              {files.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  {files.map((f, i) => (
+                    <div key={i} className="relative rounded-xl overflow-hidden aspect-square group">
+                      <img src={f.preview} alt="" className="w-full h-full object-cover" />
+                      {f.status === 'uploading' && (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
+                          <Loader2 className="w-6 h-6 text-white animate-spin mb-1" />
+                          <div className="w-full px-3">
+                            <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                              <div className="h-full bg-primary transition-all duration-300 rounded-full"
+                                style={{ width: `${f.progress}%` }} />
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
+                      {f.status === 'done' && (
+                        <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                      )}
+                      {f.status === 'error' && (
+                        <div className="absolute inset-0 bg-red-500/30 flex items-center justify-center">
+                          <AlertCircle className="w-6 h-6 text-red-400" />
+                        </div>
+                      )}
+                      {f.status === 'pending' && (
+                        <button
+                          onClick={() => removeFile(i)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white
+                            opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Camera Tab */}
+          {activeTab === 'camera' && (
+            <div className="space-y-4">
+              {!capturedImage ? (
+                <div className="relative rounded-xl overflow-hidden aspect-video bg-black flex flex-col items-center justify-center border border-border shadow-inner">
+                  {cameraStream ? (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-cover"
+                      style={{ transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none' }}
+                    />
+                  ) : (
+                    <div className="text-center p-6 text-muted-foreground flex flex-col items-center gap-2">
+                      <Camera className="w-8 h-8 animate-pulse text-orange-500" />
+                      <p className="text-sm font-medium">Mempersiapkan Kamera...</p>
                     </div>
                   )}
-                  {f.status === 'done' && (
-                    <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
-                      <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                        <Check className="w-4 h-4 text-white" />
-                      </div>
+
+                  {cameraStream && (
+                    <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6 z-10">
+                      <button
+                        type="button"
+                        onClick={toggleFacingMode}
+                        className="p-3 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-all shadow-md"
+                        title="Ganti Kamera"
+                      >
+                        <RefreshCw className="w-5 h-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCapture}
+                        className="w-14 h-14 rounded-full bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center border-4 border-white shadow-xl transition-all hover:scale-105 active:scale-95"
+                        title="Ambil Foto"
+                      >
+                        <Camera className="w-6 h-6" />
+                      </button>
                     </div>
-                  )}
-                  {f.status === 'error' && (
-                    <div className="absolute inset-0 bg-red-500/30 flex items-center justify-center">
-                      <AlertCircle className="w-6 h-6 text-red-400" />
-                    </div>
-                  )}
-                  {f.status === 'pending' && (
-                    <button
-                      onClick={() => removeFile(i)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white
-                        opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
                   )}
                 </div>
-              ))}
+              ) : (
+                <div className="relative rounded-xl overflow-hidden aspect-video bg-muted border border-border shadow-inner flex items-center justify-center">
+                  <img src={capturedImage} alt="Capture preview" className="w-full h-full object-contain" />
+                  <div className="absolute bottom-4 right-4">
+                    <button
+                      type="button"
+                      onClick={handleRetake}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-black/60 hover:bg-black/80 backdrop-blur-md transition-all"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Ambil Ulang
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Metadata form */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Judul Foto *</label>
-              <input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Contoh: Pekerjaan Pemasangan Pipa RT 05"
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
-                  outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
+          {(files.length > 0 || activeTab === 'camera') && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Judul Foto *</label>
+                <input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Contoh: Pekerjaan Pemasangan Pipa RT 05"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
+                    outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Keterangan</label>
+                <textarea
+                  value={caption}
+                  onChange={e => setCaption(e.target.value)}
+                  placeholder="Deskripsi singkat pekerjaan..."
+                  rows={2}
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
+                    outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center justify-between">
+                  <span>Lokasi Pekerjaan</span>
+                  <button
+                    type="button"
+                    onClick={handleGetGPS}
+                    disabled={gpsLoading}
+                    className="text-xs text-orange-400 hover:text-orange-300 font-semibold flex items-center gap-1 focus:outline-none"
+                  >
+                    {gpsLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
+                    Gunakan GPS
+                  </button>
+                </label>
+                <input
+                  value={location}
+                  onChange={e => setLocation(e.target.value)}
+                  placeholder="Contoh: Lat: -6.12, Long: 106.84"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
+                    outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Tanggal Pekerjaan</label>
+                <input
+                  type="date"
+                  value={workDate}
+                  disabled={activeTab === 'camera'}
+                  onChange={e => setWorkDate(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
+                    outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-1.5">
+                  <FolderOpen className="w-3.5 h-3.5" /> Folder Tujuan
+                </label>
+                <select
+                  value={selectedFolder}
+                  onChange={e => setSelectedFolder(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
+                    outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                >
+                  <option value="">Tanpa Folder</option>
+                  {folders.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5" /> Tag
+                </label>
+                <input
+                  value={tags}
+                  onChange={e => setTags(e.target.value)}
+                  placeholder="renovasi, instalasi, jalan (pisahkan koma)"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
+                    outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
             </div>
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Keterangan</label>
-              <textarea
-                value={caption}
-                onChange={e => setCaption(e.target.value)}
-                placeholder="Deskripsi singkat pekerjaan..."
-                rows={2}
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
-                  outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Lokasi Pekerjaan</label>
-              <input
-                value={location}
-                onChange={e => setLocation(e.target.value)}
-                placeholder="Contoh: Jl. Merdeka No. 5, Jakarta"
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
-                  outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Tanggal Pekerjaan</label>
-              <input
-                type="date"
-                value={workDate}
-                onChange={e => setWorkDate(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
-                  outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-1.5">
-                <FolderOpen className="w-3.5 h-3.5" /> Folder Tujuan
-              </label>
-              <select
-                value={selectedFolder}
-                onChange={e => setSelectedFolder(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
-                  outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              >
-                <option value="">Tanpa Folder</option>
-                {folders.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5" /> Tag
-              </label>
-              <input
-                value={tags}
-                onChange={e => setTags(e.target.value)}
-                placeholder="renovasi, instalasi, jalan (pisahkan koma)"
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground text-sm
-                  outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-t border-border flex-shrink-0"
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         >
-          <p className="text-sm text-muted-foreground">{files.length} file dipilih</p>
+          <p className="text-sm text-muted-foreground">
+            {activeTab === 'camera' && capturedImage ? '1 foto siap upload' : `${files.length} file dipilih`}
+          </p>
           <div className="flex gap-2 md:gap-3">
             <button onClick={handleClose} className="px-3 md:px-4 py-2 rounded-xl border border-border text-foreground text-sm hover:bg-muted transition-colors">
               Batal

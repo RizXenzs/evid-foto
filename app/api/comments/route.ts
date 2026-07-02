@@ -53,6 +53,32 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Kirim notifikasi ke pemilik foto jika komentator bukan pemilik foto
+    const { data: photoData } = await supabaseAdmin
+      .from('photos')
+      .select('title, uploaded_by')
+      .eq('id', photo_id)
+      .single()
+
+    if (photoData && photoData.uploaded_by && photoData.uploaded_by !== user.id) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', user.id)
+        .single()
+
+      const commenterName = profile?.full_name || profile?.email || 'User'
+      await supabaseAdmin.from('notifications').insert({
+        user_id: photoData.uploaded_by,
+        title: 'Komentar Baru 💬',
+        message: `${commenterName} mengomentari foto "${photoData.title}": "${comment.trim().slice(0, 50)}${comment.length > 50 ? '...' : ''}"`,
+        type: 'comment',
+        is_read: false,
+        link: '/photos',
+      })
+    }
+
     return NextResponse.json({ success: true, comment: data })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

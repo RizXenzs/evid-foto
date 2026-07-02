@@ -122,6 +122,30 @@ export async function POST(request: Request) {
       metadata: { file_name: fileName, file_size: fileSize },
     })
 
+    // Kirim notifikasi jika status pending (untuk admin)
+    if (approvalStatus === 'pending') {
+      const { data: admins } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin')
+
+      if (admins && admins.length > 0) {
+        const uploaderName = profileData?.full_name || profileData?.email || 'User'
+        const notificationsPayload = admins.map(adm => ({
+          user_id: adm.id,
+          title: 'Foto Baru Menunggu Review 📸',
+          message: `${uploaderName} mengunggah foto "${title}" yang membutuhkan persetujuan Anda.`,
+          type: 'upload',
+          is_read: false,
+          link: '/approval',
+        }))
+
+        await supabaseAdmin
+          .from('notifications')
+          .insert(notificationsPayload)
+      }
+    }
+
     return NextResponse.json({ success: true, photo: dbData })
   } catch (err: any) {
     console.error('Unexpected upload error:', err)

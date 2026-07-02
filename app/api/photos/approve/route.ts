@@ -51,6 +51,12 @@ export async function PATCH(request: Request) {
       updatePayload.approval_note = null
     }
 
+    // Query uploader details for notifications
+    const { data: photosToNotify } = await supabaseAdmin
+      .from('photos')
+      .select('id, title, uploaded_by')
+      .in('id', ids)
+
     const { error } = await supabaseAdmin
       .from('photos')
       .update(updatePayload)
@@ -68,6 +74,26 @@ export async function PATCH(request: Request) {
       target_name: `${ids.length} foto (${status === 'approved' ? 'disetujui' : 'ditolak'})`,
       metadata: { ids, status, note },
     })
+
+    // Kirim notifikasi ke masing-masing uploader
+    if (photosToNotify && photosToNotify.length > 0) {
+      const notifications = photosToNotify
+        .filter(p => p.uploaded_by) // pastikan ada uploader-nya
+        .map(p => ({
+          user_id: p.uploaded_by,
+          title: status === 'approved' ? 'Foto Anda Disetujui! ✅' : 'Foto Anda Ditolak ❌',
+          message: status === 'approved'
+            ? `Foto "${p.title}" telah disetujui oleh admin.`
+            : `Foto "${p.title}" ditolak oleh admin.${note ? ` Alasan: "${note}"` : ''}`,
+          type: 'approval',
+          is_read: false,
+          link: '/photos',
+        }))
+
+      if (notifications.length > 0) {
+        await supabaseAdmin.from('notifications').insert(notifications)
+      }
+    }
 
     return NextResponse.json({ success: true, updated: ids.length })
   } catch (err: any) {
