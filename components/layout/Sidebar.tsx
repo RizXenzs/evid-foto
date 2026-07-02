@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Images, FolderOpen, Calendar, Search,
   Download, Users, Trash2, User, Settings, Camera,
-  ChevronLeft, ChevronRight, LogOut, UserCircle, Upload, FileText, ShieldCheck
+  ChevronLeft, ChevronRight, LogOut, UserCircle, Upload, FileText, ShieldCheck,
+  BarChart3, Activity
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import type { Profile } from '@/types'
@@ -27,6 +28,8 @@ const navItems = [
 ]
 
 const adminNavItems = [
+  { href: '/dashboard/statistik', label: 'Statistik Lanjutan', icon: BarChart3 },
+  { href: '/dashboard/aktivitas', label: 'Riwayat Aktivitas', icon: Activity },
   { href: '/users', label: 'Manajemen User', icon: Users },
   { href: '/trash', label: 'Sampah', icon: Trash2 },
 ]
